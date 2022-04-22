@@ -68,6 +68,12 @@
     <ClInclude Include="PluginLoadContext.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ManagedObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PluginController.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Xml Include="Ijwhost.xml" />

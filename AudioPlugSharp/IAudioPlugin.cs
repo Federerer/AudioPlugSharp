@@ -18,5 +18,7 @@ namespace AudioPlugSharp
 
         IAudioPluginProcessor Processor { get; }
         IAudioPluginEditor Editor { get; }
+
+        IPluginController Controller { get; set; }
     }
 }

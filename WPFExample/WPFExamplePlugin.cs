@@ -34,6 +34,12 @@ namespace WPFExample
             InputPorts = new AudioIOPort[] { monoInput = new AudioIOPort("Mono Input", EAudioChannelConfiguration.Mono) };
             OutputPorts = new AudioIOPort[] { stereoOutput = new AudioIOPort("Stereo Output", EAudioChannelConfiguration.Stereo) };
 
+        }
+
+        public override void InitializeEditor()
+        {
+            base.InitializeEditor();
+
             AddParameter(new AudioPluginParameter
             {
                 ID = "gain",
@@ -60,6 +66,8 @@ namespace WPFExample
         public override void Process()
         {
             base.Process();
+
+            var x = this.Controller;
 
             double gain = GetParameter("gain").Value;
             double linearGain = Math.Pow(10.0, 0.05 * gain);

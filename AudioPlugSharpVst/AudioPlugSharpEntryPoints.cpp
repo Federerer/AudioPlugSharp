@@ -19,6 +19,9 @@ IPluginFactory* PLUGIN_API GetPluginFactory()
 			Logger::Log("Error creating plugin factory: " + ex->ToString());
 		}
 	//}
+	//else {
+	//	gPluginFactory->addRef();
+	//}
 
 	return gPluginFactory;
 }

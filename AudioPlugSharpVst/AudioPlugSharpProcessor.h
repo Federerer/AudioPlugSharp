@@ -20,7 +20,7 @@ using namespace AudioPlugSharp;
 class AudioPlugSharpFactory;
 class AudioPlugSharpController;
 
-class AudioPlugSharpProcessor : public AudioEffect
+ class AudioPlugSharpProcessor : public AudioEffect
 {
 public:
 	AudioPlugSharpProcessor(void);

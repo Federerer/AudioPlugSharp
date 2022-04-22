@@ -25,6 +25,8 @@ namespace AudioPlugSharp
         public IAudioPluginProcessor Processor { get { return this; } }
         public IAudioPluginEditor Editor { get { return this; } }
 
+        public IPluginController Controller { get; set; }
+
 
         //
         // IAudioPluginProcessor Properties
@@ -33,7 +35,7 @@ namespace AudioPlugSharp
         public AudioIOPort[] InputPorts { get; protected set; }
         public AudioIOPort[] OutputPorts { get; protected set; }
         public EAudioBitsPerSample SampleFormatsSupported { get; protected set; }
-        public IReadOnlyList<AudioPluginParameter> Parameters { get; private set; }
+        public IReadOnlyList<AudioPluginParameter> Parameters => parameterList;
 
         List<AudioPluginParameter> parameterList = new List<AudioPluginParameter>();
         Dictionary<string, AudioPluginParameter> parameterDict = new Dictionary<string, AudioPluginParameter>();
@@ -70,14 +72,14 @@ namespace AudioPlugSharp
         public virtual void Initialize()
         {
             Logger.Log("Initializing processor");            
-
-            Parameters = parameterList;
         }
 
         public void AddParameter(AudioPluginParameter parameter)
         {
             parameterList.Add(parameter);
             parameterDict[parameter.ID] = parameter;
+
+            Controller.AddParmameter(parameter, (ushort)(parameterList.IndexOf(parameter) + 128));
         }
 
         public IReadOnlyCollection<AudioPluginParameter> EnumerateParameters()

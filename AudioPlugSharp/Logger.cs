@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Threading;
@@ -18,14 +19,14 @@ namespace AudioPlugSharp
 
         public static bool WriteToStdErr { get; set; }
 
-        static ConcurrentQueue<string> logQueue;
+        static BlockingCollection<string> logQueue;
         static StreamWriter logWriter = null;
         static string logPath;
         static string logFileDateFormat = "yyyy-MM-dd-HH-mm-ss-ffff";
 
         static Logger()
         {
-            logQueue = new ConcurrentQueue<string>();
+            logQueue = new BlockingCollection<string>();
 
             logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AudioPlugSharp");
 
@@ -64,13 +65,13 @@ namespace AudioPlugSharp
         {
             logEntry = string.Format("[{0:yyyy/MM/dd HH:mm:ss:ffff}] {1}", DateTime.Now, logEntry);
 
-            logQueue.Enqueue(logEntry);
-
-            if (ImmediateMode)
-                WriteLogs();
+            logQueue.Add(logEntry);
+            Debug.WriteLine(logEntry);
 
             if (WriteToStdErr)
+            {
                 Console.Error.WriteLine(logEntry);
+            }
         }
 
         static void DeleteOldLogs()
@@ -108,32 +109,11 @@ namespace AudioPlugSharp
 
         static void DoLogging()
         {
-            do
-            {
-                Thread.Sleep(250);
-
-                if (logQueue.Count > 0)
-                {
-                    WriteLogs();
-                }
-            }
-            while (true);
-        }
-
-        static void WriteLogs()
-        {
-            string logEntry;
-            bool wroteEntries = false;
-
-            while (logQueue.TryDequeue(out logEntry))
+            foreach (var logEntry in logQueue.GetConsumingEnumerable())
             {
                 logWriter.WriteLine(logEntry);
-
-                wroteEntries = true;
             }
-
-            if (wroteEntries)
-                logWriter.Flush();
+            logWriter.Flush();
         }
     }
 }

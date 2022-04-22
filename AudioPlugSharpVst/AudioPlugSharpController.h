@@ -45,6 +45,8 @@ public:
 	 void sendIntMessage(const char* idTag, const Steinberg::int64 value);
 	 void setProcessor(AudioPlugSharpProcessor* processor, IAudioPlugin^ plugin);
 
+	 void addParameter(AudioPluginParameter^ parameter, uint16 paramID);
+
 	~AudioPlugSharpController(void);
 
 	DELEGATE_REFCOUNT(EditController)

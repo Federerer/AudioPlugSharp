@@ -4,6 +4,7 @@
 #include "AudioPlugSharpProcessor.h"
 #include "AudioPlugSharpController.h"
 #include "AudioPlugSharpFactory.h"
+#include "PluginController.h"
 
 FUID AudioPlugSharpController::AudioPlugSharpControllerUID;
 
@@ -23,7 +24,9 @@ FUnknown* AudioPlugSharpController::createInstance(void* factory)
 	Logger::Log("Create controller instance");
 
 	AudioPlugSharpController* controller = new AudioPlugSharpController();
-	controller->plugin = ((AudioPlugSharpFactory*)factory)->plugin;
+	auto plugin = ((AudioPlugSharpFactory*)factory)->plugin;
+	plugin->Controller = gcnew PluginController(controller);
+	controller->plugin = plugin;
 
 	return (IAudioProcessor*)controller;
 }
@@ -52,11 +55,7 @@ tresult PLUGIN_API AudioPlugSharpController::initialize(FUnknown* context)
 	{
 		Logger::Log("Registering parameter: " + parameter->Name);
 
-		TChar* paramName = (TChar*)(void*)Marshal::StringToHGlobalUni(parameter->Name);
-
-		parameters.addParameter(paramName, nullptr, 0, parameter->GetValueNormalized(parameter->DefaultValue), ParameterInfo::kCanAutomate, paramID);
-
-		Marshal::FreeHGlobal((IntPtr)paramName);
+		addParameter(parameter, paramID);
 
 		paramID++;
 	}
@@ -65,6 +64,16 @@ tresult PLUGIN_API AudioPlugSharpController::initialize(FUnknown* context)
 
 	return result;
 }
+
+void AudioPlugSharpController::addParameter(AudioPluginParameter^ parameter, uint16 paramID)
+{
+	TChar* paramName = (TChar*)(void*)Marshal::StringToHGlobalUni(parameter->Name);
+
+	parameters.addParameter(paramName, nullptr, 0, parameter->GetValueNormalized(parameter->DefaultValue), ParameterInfo::kCanAutomate, paramID);
+
+	Marshal::FreeHGlobal((IntPtr)paramName);
+}
+
 
 tresult PLUGIN_API AudioPlugSharpController::terminate()
 {

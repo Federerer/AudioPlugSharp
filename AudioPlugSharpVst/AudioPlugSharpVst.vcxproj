@@ -24,36 +24,36 @@
     <Keyword>NetCoreCProj</Keyword>
     <RootNamespace>AudioPlugSharpVst</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <TargetFramework>net5.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CLRSupport>NetCore</CLRSupport>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CLRSupport>NetCore</CLRSupport>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CLRSupport>NetCore</CLRSupport>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CLRSupport>NetCore</CLRSupport>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -145,20 +145,6 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="..\AudioPlugSharp\AudioPlugSharp.csproj">
-      <Project>{9418f8d2-a4bb-4a69-a2dc-7fd312e49d77}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\vstbuild\base\base.vcxproj">
-      <Project>{d47ca71a-67fb-39fc-a8d8-c42e728e322d}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\vstbuild\pluginterfaces\pluginterfaces.vcxproj">
-      <Project>{61b1304b-aa25-31a3-83d3-9de105658b7b}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\vstbuild\public.sdk\sdk.vcxproj">
-      <Project>{0e457a07-0e59-35dd-ba1c-904d39085c52}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="AssemblyResolver.cpp" />
     <ClCompile Include="AudioPlugSharpHost.cpp" />
     <ClCompile Include="AudioPlugSharpProcessor.cpp" />
@@ -177,6 +163,8 @@
     <ClInclude Include="AudioPlugSharpFactory.h" />
     <ClInclude Include="AudioPlugSharpParameter.h" />
     <ClInclude Include="AudioPlugSharpEditor.h" />
+    <ClInclude Include="ManagedObject.h" />
+    <ClInclude Include="PluginController.h" />
     <ClInclude Include="PluginLoadContext.h" />
   </ItemGroup>
   <ItemGroup>
@@ -186,6 +174,20 @@
     <None Include="wpf.runtimeconfig.json">
       <DeploymentContent>true</DeploymentContent>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AudioPlugSharp\AudioPlugSharp.csproj">
+      <Project>{9418f8d2-a4bb-4a69-a2dc-7fd312e49d77}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\vstbuild\base\base.vcxproj">
+      <Project>{8f453bad-c926-3407-a9c4-25dc83738bc1}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\vstbuild\pluginterfaces\pluginterfaces.vcxproj">
+      <Project>{739f352a-cde4-30b3-b2ca-746ecf8d193c}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\vstbuild\public.sdk\sdk.vcxproj">
+      <Project>{dc41e1c8-5b98-3d9b-b0db-9cf306922c9b}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
