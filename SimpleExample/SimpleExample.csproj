@@ -18,6 +18,7 @@
   </Target>
 
   <ItemGroup>
+    <ProjectReference Include="..\AudioPlugSharpVst\AudioPlugSharpVst.vcxproj" />
     <ProjectReference Include="..\AudioPlugSharp\AudioPlugSharp.csproj" />
   </ItemGroup>
 

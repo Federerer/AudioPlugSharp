@@ -1,9 +1,13 @@
 #include "public.sdk/source/vst/vstaudioprocessoralgo.h"
 
+#include "public.sdk/source/vst/vstaudioeffect.h"
 #include "pluginterfaces/vst/ivstevents.h"
 #include "pluginterfaces/vst/ivstparameterchanges.h"
 #include "pluginterfaces/base/ibstream.h"
 #include "base/source/fstreamer.h"
+
+#include "base/source/fobject.h"
+
 
 #include <sstream>
 
@@ -14,12 +18,13 @@
 using namespace System;
 using namespace System::Collections::Generic;
 using namespace System::Runtime::InteropServices;
+using namespace System::Reflection;
 
 using namespace AudioPlugSharp;
 
 FUID AudioPlugSharpProcessor::AudioPlugSharpProcessorUID;
 
-AudioPlugSharpProcessor::AudioPlugSharpProcessor(void)
+AudioPlugSharpProcessor::AudioPlugSharpProcessor(IAudioPluginProcessor^ managed): managedProcessor(managed)
 {
 	setControllerClass(FUID(AudioPlugSharpController::AudioPlugSharpControllerUID));
 }
@@ -32,10 +37,16 @@ FUnknown* AudioPlugSharpProcessor::createInstance(void* factory)
 {
 	Logger::Log("Create processor instance");
 
-	AudioPlugSharpProcessor* processor = new AudioPlugSharpProcessor();
-	processor->plugin = ((AudioPlugSharpFactory *)factory)->plugin;
+	auto apsFactory = static_cast<AudioPlugSharpFactory*>(factory);
 
-	return (IAudioProcessor*)processor;
+	auto assembly = Assembly::GetExecutingAssembly()->Location;
+
+	Logger::Log("createInstance: " + assembly);
+
+	auto managed = apsFactory->Load<IAudioPluginProcessor>();
+	IAudioProcessor* processor = new AudioPlugSharpProcessor(managed);
+
+	return processor;
 }
 
 tresult PLUGIN_API AudioPlugSharpProcessor::initialize(FUnknown* context)
@@ -51,9 +62,9 @@ tresult PLUGIN_API AudioPlugSharpProcessor::initialize(FUnknown* context)
 	{
 		audioPlugHost = gcnew AudioPlugSharpHost();
 
-		plugin->Host = audioPlugHost;
+		//plugin->Host = audioPlugHost;
 
-		plugin->Processor->Initialize();
+		managedProcessor->Initialize();
 	}
 	catch (Exception^ ex)
 	{
@@ -61,9 +72,9 @@ tresult PLUGIN_API AudioPlugSharpProcessor::initialize(FUnknown* context)
 	}
 
 	// Add audio inputs
-	for each (auto port in plugin->Processor->InputPorts)
+	for each (auto port in managedProcessor->InputPorts)
 	{
-		TChar* portName = (TChar*)(void*)Marshal::StringToHGlobalUni(plugin->Company);
+		TChar* portName = (TChar*)(void*)Marshal::StringToHGlobalUni(port->Name);
 
 		addAudioInput(portName, port->ChannelConfiguration == EAudioChannelConfiguration::Mono ? SpeakerArr::kMono : SpeakerArr::kStereo);
 
@@ -71,9 +82,9 @@ tresult PLUGIN_API AudioPlugSharpProcessor::initialize(FUnknown* context)
 	}
 
 	// Add audio outputs
-	for each (auto port in plugin->Processor->OutputPorts)
+	for each (auto port in managedProcessor->OutputPorts)
 	{
-		TChar* portName = (TChar*)(void*)Marshal::StringToHGlobalUni(plugin->Company);
+		TChar* portName = (TChar*)(void*)Marshal::StringToHGlobalUni(port->Name);
 
 		addAudioOutput(portName, port->ChannelConfiguration == EAudioChannelConfiguration::Mono ? SpeakerArr::kMono : SpeakerArr::kStereo);
 
@@ -95,11 +106,11 @@ tresult PLUGIN_API AudioPlugSharpProcessor::setActive(TBool state)
 {
 	if (state)
 	{
-		plugin->Processor->Start();
+		managedProcessor->Start();
 	}
 	else
 	{
-		plugin->Processor->Stop();
+		managedProcessor->Stop();
 	}
 
 	return AudioEffect::setActive(state);
@@ -130,7 +141,7 @@ tresult PLUGIN_API AudioPlugSharpProcessor::setState(IBStream* state)
 
 		Marshal::Copy((IntPtr)&dataString[0], byteArray, 0, byteArray->Length);
 
-		plugin->Processor->RestoreState(byteArray);
+		managedProcessor->RestoreState(byteArray);
 	}
 
 	return kResultOk;
@@ -140,7 +151,7 @@ tresult PLUGIN_API AudioPlugSharpProcessor::getState(IBStream* state)
 {
 	Logger::Log("Save State");
 
-	auto data = plugin->Processor->SaveState();
+	auto data = managedProcessor->SaveState();
 
 	if (data != nullptr)
 	{
@@ -160,7 +171,7 @@ tresult PLUGIN_API AudioPlugSharpProcessor::canProcessSampleSize(int32 symbolicS
 {
 	if (symbolicSampleSize == kSample32)
 	{
-		if ((plugin->Processor->SampleFormatsSupported & EAudioBitsPerSample::Bits32) == EAudioBitsPerSample::Bits32)
+		if ((managedProcessor->SampleFormatsSupported & EAudioBitsPerSample::Bits32) == EAudioBitsPerSample::Bits32)
 		{
 			return kResultTrue;
 		}
@@ -168,7 +179,7 @@ tresult PLUGIN_API AudioPlugSharpProcessor::canProcessSampleSize(int32 symbolicS
 
 	if (symbolicSampleSize == kSample64)
 	{
-		if ((plugin->Processor->SampleFormatsSupported & EAudioBitsPerSample::Bits64) == EAudioBitsPerSample::Bits64)
+		if ((managedProcessor->SampleFormatsSupported & EAudioBitsPerSample::Bits64) == EAudioBitsPerSample::Bits64)
 		{
 			return kResultTrue;
 		}
@@ -187,20 +198,6 @@ tresult PLUGIN_API AudioPlugSharpProcessor::setBusArrangements(SpeakerArrangemen
 tresult PLUGIN_API AudioPlugSharpProcessor::notify(Vst::IMessage* message)
 {
 	Logger::Log("Got message from controller");
-
-	if (message != nullptr)
-	{
-		Steinberg::int64 value = 0;
-
-		if (message->getAttributes()->getInt("GuitarSimVstControllerPtr", value) == kResultTrue)
-		{
-			Logger::Log("Got controller pointer");
-
-			controller = (AudioPlugSharpController*)value;
-
-			controller->setProcessor(this, plugin);
-		}
-	}
 
 	return kResultTrue;
 }
@@ -223,7 +220,7 @@ tresult PLUGIN_API AudioPlugSharpProcessor::setupProcessing(ProcessSetup& newSet
 	audioPlugHost->BitsPerSample = (newSetup.symbolicSampleSize == kSample32) ? EAudioBitsPerSample::Bits32 : EAudioBitsPerSample::Bits64;
 	audioPlugHost->MaxAudioBufferSize = newSetup.maxSamplesPerBlock;
 
-	plugin->Processor->InitializeProcessing();
+	managedProcessor->InitializeProcessing();
 
 	return kResultOk;
 }
@@ -252,7 +249,7 @@ tresult PLUGIN_API AudioPlugSharpProcessor::process(ProcessData& data)
 				// Only getting the last value - probably should get them all and pass them on with sample offsets...
 				if (paramQueue->getPoint(numPoints - 1, sampleOffset, value) ==	kResultTrue)
 				{					
-					plugin->Processor->Parameters[paramID - PLUGIN_PARAMETER_USER_START]->NormalizedValue = value;
+					//managedProcessor->Parameters[paramID - PLUGIN_PARAMETER_USER_START]->NormalizedValue = value;
 				}
 			}
 		}
@@ -273,18 +270,18 @@ tresult PLUGIN_API AudioPlugSharpProcessor::process(ProcessData& data)
 				{
 					case Event::kNoteOnEvent:
 					{
-						plugin->Processor->HandleNoteOn(event.noteOn.pitch, event.noteOn.velocity);
+						managedProcessor->HandleNoteOn(event.noteOn.pitch, event.noteOn.velocity);
 
 						break;
 					}
 					case Event::kNoteOffEvent:
 					{
-						plugin->Processor->HandleNoteOff(event.noteOff.pitch, event.noteOff.velocity);
+						managedProcessor->HandleNoteOff(event.noteOff.pitch, event.noteOff.velocity);
 
 						break;
 					}
 					case Event::kPolyPressureEvent:
-						plugin->Processor->HandlePolyPressure(event.polyPressure.pitch, event.polyPressure.pressure);
+						managedProcessor->HandlePolyPressure(event.polyPressure.pitch, event.polyPressure.pressure);
 
 						break;
 				}
@@ -298,19 +295,19 @@ tresult PLUGIN_API AudioPlugSharpProcessor::process(ProcessData& data)
 	}
 	else
 	{
-		for (int input = 0; input < plugin->Processor->InputPorts->Length; input++)
+		for (int input = 0; input < managedProcessor->InputPorts->Length; input++)
 		{
-			plugin->Processor->InputPorts[input]->SetAudioBufferPtrs((IntPtr)getChannelBuffersPointer(processSetup, data.inputs[input]),
+			managedProcessor->InputPorts[input]->SetAudioBufferPtrs((IntPtr)getChannelBuffersPointer(processSetup, data.inputs[input]),
 				(data.symbolicSampleSize == kSample32) ? EAudioBitsPerSample::Bits32 : EAudioBitsPerSample::Bits64, data.numSamples);
 		}
 
-		for (int output = 0; output < plugin->Processor->OutputPorts->Length; output++)
+		for (int output = 0; output < managedProcessor->OutputPorts->Length; output++)
 		{
-			plugin->Processor->OutputPorts[output]->SetAudioBufferPtrs((IntPtr)getChannelBuffersPointer(processSetup, data.outputs[output]),
+			managedProcessor->OutputPorts[output]->SetAudioBufferPtrs((IntPtr)getChannelBuffersPointer(processSetup, data.outputs[output]),
 				(data.symbolicSampleSize == kSample32) ? EAudioBitsPerSample::Bits32 : EAudioBitsPerSample::Bits64, data.numSamples);
 		}
 
-		plugin->Processor->Process();
+		managedProcessor->Process();
 	}
 
 	// Handle any output parameter changes (such as volume meter output)
@@ -318,4 +315,14 @@ tresult PLUGIN_API AudioPlugSharpProcessor::process(ProcessData& data)
 	IParameterChanges* outParamChanges = data.outputParameterChanges;
 
 	return kResultOk;
+}
+
+tresult PLUGIN_API AudioPlugSharpProcessor::queryInterface(const char* iid, void** obj)
+{
+	if (::Steinberg::FUnknownPrivate::iidEqual(iid, IEditController::iid))
+	{
+		return ::Steinberg::kResultOk;
+	}
+
+    return AudioEffect::queryInterface(iid, obj);
 }

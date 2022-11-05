@@ -12,16 +12,19 @@ using namespace msclr;
 AudioPlugSharpFactory::AudioPlugSharpFactory()
 	: CPluginFactory(PFactoryInfo())
 {
-	System::String^ assemblyName = Path::GetFileNameWithoutExtension(Assembly::GetExecutingAssembly()->Location);
+	auto location = Assembly::GetExecutingAssembly()->Location;
+	System::String^ assemblyName = Path::GetFileNameWithoutExtension(location);
 
 	// Our plugin should be our name but without the 'Bridge' at the end
 	assemblyName = assemblyName->Substring(0, assemblyName->Length - 6);
 
 	Logger::Log("Plugin assembly name: " + assemblyName);
 
-	plugin = PluginLoader::LoadPluginFromAssembly(assemblyName);
+	loader = gcnew PluginLoader(Path::GetDirectoryName(location), assemblyName);
 
-	char* companyChars = (char*)(void*)Marshal::StringToHGlobalAnsi(plugin->Company);
+	IAudioPlugin^ plugin = loader->GetObjectByInterface<IAudioPlugin^>();
+
+	char* companyChars = (char*)Marshal::StringToHGlobalAnsi(plugin->Company).ToPointer();
 	char* websiteChars = (char*)(void*)Marshal::StringToHGlobalAnsi(plugin->Website);
 	char* contactChars = (char*)(void*)Marshal::StringToHGlobalAnsi(plugin->Contact);
 	char* pluginNameChars = (char*)(void*)Marshal::StringToHGlobalAnsi(plugin->PluginName);

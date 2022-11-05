@@ -6,7 +6,7 @@ using System.Xml.Serialization;
 
 namespace AudioPlugSharp
 {
-    public class AudioPluginBase : IAudioPlugin, IAudioPluginProcessor, IAudioPluginEditor
+    public class AudioPluginBase : IAudioPlugin
     {
         //
         // IAudioPlugin Properties
@@ -22,9 +22,6 @@ namespace AudioPlugSharp
 
         public IAudioHost Host { get; set; }
 
-        public IAudioPluginProcessor Processor { get { return this; } }
-        public IAudioPluginEditor Editor { get { return this; } }
-
 
         //
         // IAudioPluginProcessor Properties
@@ -33,21 +30,12 @@ namespace AudioPlugSharp
         public AudioIOPort[] InputPorts { get; protected set; }
         public AudioIOPort[] OutputPorts { get; protected set; }
         public EAudioBitsPerSample SampleFormatsSupported { get; protected set; }
-        public IReadOnlyList<AudioPluginParameter> Parameters { get; private set; }
-
-        List<AudioPluginParameter> parameterList = new List<AudioPluginParameter>();
-        Dictionary<string, AudioPluginParameter> parameterDict = new Dictionary<string, AudioPluginParameter>();
-        Dictionary<uint, AudioPluginParameter> parameterCCDict = new Dictionary<uint, AudioPluginParameter>();
 
         public AudioPluginSaveState SaveStateData { get; protected set; }
 
         //
         // IAudioPluginEditor Properties
         //
-
-        public bool HasUserInterface { get; protected set; }
-        public uint EditorWidth { get; protected set; }
-        public uint EditorHeight { get; protected set; }
 
         public AudioPluginBase()
         {
@@ -57,10 +45,6 @@ namespace AudioPlugSharp
             OutputPorts = new AudioIOPort[0];
 
             SampleFormatsSupported = EAudioBitsPerSample.Bits32 | EAudioBitsPerSample.Bits64;
-
-            HasUserInterface = false;
-            EditorWidth = 400;
-            EditorHeight = 200;
         }
 
         //
@@ -69,46 +53,13 @@ namespace AudioPlugSharp
 
         public virtual void Initialize()
         {
-            Logger.Log("Initializing processor");            
-
-            Parameters = parameterList;
-        }
-
-        public void AddParameter(AudioPluginParameter parameter)
-        {
-            parameterList.Add(parameter);
-            parameterDict[parameter.ID] = parameter;
-
-            parameter.Value = parameter.DefaultValue;
-        }
-
-        public IReadOnlyCollection<AudioPluginParameter> EnumerateParameters()
-        {
-            return parameterList.AsReadOnly();
-        }
-
-        public AudioPluginParameter GetParameter(string paramID)
-        {
-            return parameterDict[paramID];
-        }
-
-        public void AddMidiControllerMapping(AudioPluginParameter parameter, uint ccNumber)
-        {
-            parameterCCDict[ccNumber] = parameter;
-        }
-
-        public AudioPluginParameter GetParameterByMidiController(uint ccNumber)
-        {
-            if (!parameterCCDict.ContainsKey(ccNumber))
-                return null;
-
-            return parameterCCDict[ccNumber];
+            Logger.Log("Initializing processor"); 
         }
 
 
         public virtual byte[] SaveState()
         {
-            SaveStateData.SaveParameterValues(Parameters);
+            //SaveStateData.SaveParameterValues(Parameters);
 
             XmlSerializer serializer = new XmlSerializer(SaveStateData.GetType());
 
@@ -147,7 +98,7 @@ namespace AudioPlugSharp
                     Logger.Log("Save state deserialization failed with: " + ex.ToString());
                 }
 
-                SaveStateData.RestoreParameterValues(Parameters);
+                //SaveStateData.RestoreParameterValues(Parameters);
             }
         }
 
@@ -183,33 +134,5 @@ namespace AudioPlugSharp
         {
         }
 
-
-        //
-        // IAudioPluginEditor Methods
-        //
-
-        public virtual double GetDpiScale()
-        {
-            return 1.0;
-        }
-
-        public virtual void InitializeEditor()
-        {
-            Logger.Log("Initialize Editor");
-        }
-
-        public virtual void ResizeEditor(uint newWidth, uint newHeight)
-        {
-            EditorWidth = newWidth;
-            EditorHeight = newHeight;
-        }
-
-        public virtual void ShowEditor(IntPtr parentWindow)
-        {
-        }
-
-        public virtual void HideEditor()
-        {
-        }
     }
 }

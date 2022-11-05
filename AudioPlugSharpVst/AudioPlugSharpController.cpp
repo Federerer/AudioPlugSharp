@@ -4,13 +4,14 @@
 #include "AudioPlugSharpProcessor.h"
 #include "AudioPlugSharpController.h"
 #include "AudioPlugSharpFactory.h"
+#include <sstream>
 
 FUID AudioPlugSharpController::AudioPlugSharpControllerUID;
 
 using namespace System;
 using namespace System::Runtime::InteropServices;
 
-AudioPlugSharpController::AudioPlugSharpController(void)
+AudioPlugSharpController::AudioPlugSharpController(IAudioPluginController^ managed): managedController(managed)
 {
 }
 
@@ -22,8 +23,10 @@ FUnknown* AudioPlugSharpController::createInstance(void* factory)
 {
 	Logger::Log("Create controller instance");
 
-	AudioPlugSharpController* controller = new AudioPlugSharpController();
-	controller->plugin = ((AudioPlugSharpFactory*)factory)->plugin;
+	auto apsFactory = static_cast<AudioPlugSharpFactory*>(factory);
+
+	auto managedController = apsFactory->Load<IAudioPluginController>();
+	AudioPlugSharpController* controller = new AudioPlugSharpController(managedController);
 
 	return (IAudioProcessor*)controller;
 }
@@ -39,29 +42,27 @@ tresult PLUGIN_API AudioPlugSharpController::initialize(FUnknown* context)
 
 	try
 	{
-		plugin->Editor->InitializeEditor();
+		managedController->Initialize();
+
+		uint16 paramID = PLUGIN_PARAMETER_USER_START;
+
+		for each (auto parameter in managedController->Parameters)
+		{
+			Logger::Log("Registering parameter: " + parameter->Name);
+
+			TChar* paramName = (TChar*)(void*)Marshal::StringToHGlobalUni(parameter->Name);
+
+			parameters.addParameter(paramName, nullptr, 0, parameter->GetValueNormalized(parameter->DefaultValue), ParameterInfo::kCanAutomate, paramID);
+
+			Marshal::FreeHGlobal((IntPtr)paramName);
+
+			paramID++;
+		}
 	}
 	catch (Exception^ ex)
 	{
 		Logger::Log("Unable to initialize managed editor: " + ex->ToString());
 	}
-
-	uint16 paramID = PLUGIN_PARAMETER_USER_START;
-
-	for each (auto parameter in plugin->Processor->Parameters)
-	{
-		Logger::Log("Registering parameter: " + parameter->Name);
-
-		TChar* paramName = (TChar*)(void*)Marshal::StringToHGlobalUni(parameter->Name);
-
-		parameters.addParameter(paramName, nullptr, 0, parameter->GetValueNormalized(parameter->DefaultValue), ParameterInfo::kCanAutomate, paramID);
-
-		Marshal::FreeHGlobal((IntPtr)paramName);
-
-		paramID++;
-	}
-
-	//parameters.addParameter(STR16("Gain"), nullptr, 0, 0.5, ParameterInfo::kCanAutomate, kGainId);
 
 	return result;
 }
@@ -78,7 +79,7 @@ tresult PLUGIN_API AudioPlugSharpController::setParamNormalized(ParamID tag, Par
 		return kResultFalse;
 	}
 
-	plugin->Processor->Parameters[tag - PLUGIN_PARAMETER_USER_START]->NormalizedValue = value;
+	managedController->Parameters[tag - PLUGIN_PARAMETER_USER_START]->NormalizedValue = value;
 
 	return kResultOk;
 }
@@ -90,7 +91,7 @@ ParamValue PLUGIN_API AudioPlugSharpController::getParamNormalized(ParamID tag)
 		return 0;
 	}
 
-	return plugin->Processor->Parameters[tag - PLUGIN_PARAMETER_USER_START]->NormalizedValue;
+	return managedController->Parameters[tag - PLUGIN_PARAMETER_USER_START]->NormalizedValue;
 }
 
 tresult PLUGIN_API AudioPlugSharpController::getParamStringByValue(ParamID tag, ParamValue valueNormalized, String128 string)
@@ -100,7 +101,7 @@ tresult PLUGIN_API AudioPlugSharpController::getParamStringByValue(ParamID tag, 
 		return kResultFalse;
 	}
 
-	TChar* paramStr = (TChar*)(void*)Marshal::StringToHGlobalUni(plugin->Processor->Parameters[tag - PLUGIN_PARAMETER_USER_START]->DisplayValue);
+	TChar* paramStr = (TChar*)(void*)Marshal::StringToHGlobalUni(managedController->Parameters[tag - PLUGIN_PARAMETER_USER_START]->DisplayValue);
 
 	strcpy16(string, paramStr);
 
@@ -113,16 +114,31 @@ tresult PLUGIN_API AudioPlugSharpController::setComponentState(IBStream* state)
 {
 	Logger::Log("Controller setComponentState");
 
-	if (!state)
-		return kResultFalse;
+	Logger::Log("Restore State");
 
-	//IBStreamer streamer(state, kLittleEndian);
+	if (state != nullptr)
+	{
+		std::stringstream stringStream;
 
-	//float savedGain = 0.f;
-	//if (streamer.readFloat(savedGain) == false)
-	//	return kResultFalse;
+		char readBuf[1024];
 
-	//setParamNormalized(kGainId, savedGain);
+		int32 numRead;
+
+		do
+		{
+			state->read(readBuf, 1024, &numRead);
+
+			stringStream.write(readBuf, numRead);
+		} while (numRead == 1024);
+
+		std::string dataString = stringStream.str();
+
+		array<Byte>^ byteArray = gcnew array<Byte>(dataString.size());
+
+		Marshal::Copy((IntPtr)&dataString[0], byteArray, 0, byteArray->Length);
+
+		managedController->SetComponentState(byteArray);
+	}
 
 	return kResultOk;
 }
@@ -151,24 +167,19 @@ tresult PLUGIN_API AudioPlugSharpController::connect(IConnectionPoint* other)
 	return result;
 }
 
-void AudioPlugSharpController::setProcessor(AudioPlugSharpProcessor* processor, IAudioPlugin^ plugin)
-{
-	this->processor = processor;
-	this->plugin = plugin;
-}
-
-
 
 IPlugView* PLUGIN_API AudioPlugSharpController::createView(const char* name)
 {
 	Logger::Log("Create Editor View");
 
-	if (!plugin->Editor->HasUserInterface)
+	auto view = managedController->CreateView();
+
+	if (!view)
 	{
 		return nullptr;
 	}
 
-	editorView = new AudioPlugSharpEditor(this, plugin);
+	editorView = new AudioPlugSharpEditor(this, view);
 
 	return editorView;
 }
@@ -179,13 +190,13 @@ tresult PLUGIN_API AudioPlugSharpController::getMidiControllerAssignment(int32 b
 {
 	if (busIndex == 0)
 	{
-		AudioPluginParameter^ parameter = plugin->Processor->GetParameterByMidiController(midiControllerNumber);
+		AudioPluginParameter^ parameter = managedController->GetParameterByMidiController(midiControllerNumber);
 
 		if (parameter != nullptr)
 		{
-			for (int i = 0; i < plugin->Processor->Parameters->Count; i++)
+			for (int i = 0; i < managedController->Parameters->Count; i++)
 			{
-				if (plugin->Processor->Parameters[i] == parameter)
+				if (managedController->Parameters[i] == parameter)
 				{
 					tag = PLUGIN_PARAMETER_USER_START + i;
 

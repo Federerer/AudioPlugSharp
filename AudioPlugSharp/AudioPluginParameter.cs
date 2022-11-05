@@ -43,7 +43,7 @@ namespace AudioPlugSharp
             }
         }
         public Action<double> ValueChanged { get; set; }
-        public string DisplayValue { get { return String.Format(ValueFormat, Value); } }
+        public string DisplayValue { get { return string.Format(ValueFormat, Value); } }
         public double NormalizedValue
         {
             get { return GetValueNormalized(Value); }

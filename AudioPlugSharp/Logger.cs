@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Threading;
@@ -25,7 +26,7 @@ namespace AudioPlugSharp
 
         static Logger()
         {
-            //ImmediateMode = true;
+            ImmediateMode = true;
 
             logQueue = new ConcurrentQueue<string>();
 
@@ -130,6 +131,7 @@ namespace AudioPlugSharp
             while (logQueue.TryDequeue(out logEntry))
             {
                 logWriter.WriteLine(logEntry);
+                Debug.WriteLine(logEntry);
 
                 wroteEntries = true;
             }

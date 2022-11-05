@@ -3,61 +3,24 @@ using AudioPlugSharp;
 
 namespace SimpleExample
 {
-    public class SimpleExamplePlugin : AudioPluginBase
+    public class SimpleExamplePlugin : IAudioPlugin
     {
-        public SimpleExamplePlugin()
-        {
-            Company = "My Company";
-            Website = "www.mywebsite.com";
-            Contact = "contact@my.email";
-            PluginName = "Simple Gain Plugin";
-            PluginCategory = "Fx";
-            PluginVersion = "1.0.0";
+        public string Company => "My Company";
 
-            // Unique 64bit ID for the plugin
-            PluginID = 0xF57703946AFC4EF8;
-        }
+        public string Website => "www.mywebsite.com";
 
-        AudioIOPort monoInput;
-        AudioIOPort monoOutput;
+        public string Contact => "contact@my.email";
 
-        public override void Initialize()
-        {
-            base.Initialize();
+        public string PluginName => "Simple Gain Plugin";
 
-            InputPorts = new AudioIOPort[] { monoInput = new AudioIOPort("Mono Input", EAudioChannelConfiguration.Mono) };
-            OutputPorts = new AudioIOPort[] { monoOutput = new AudioIOPort("Mono Output", EAudioChannelConfiguration.Mono) };
+        public string PluginCategory => "Fx";
 
-            AddParameter(new AudioPluginParameter
-            {
-                ID = "gain",
-                Name = "Gain",
-                Type = EAudioPluginParameterType.Float,
-                MinValue = -20,
-                MaxValue = 20,
-                DefaultValue = 0,
-                ValueFormat = "{0:0.0}dB"
-            });
-        }
+        public string PluginVersion => "1.0.0";
 
-        public override void Process()
-        {
-            base.Process();
+        // Unique 64bit ID for the plugin
+        public ulong PluginID => 0xF57703946AFC4EF8;
 
-            double gain = GetParameter("gain").Value;
-            double linearGain = Math.Pow(10.0, 0.05 * gain);
+        public IAudioHost Host { get; set; }
 
-            monoInput.ReadData();
-
-            double[] inSamples = monoInput.GetAudioBuffers()[0];
-            double[] outSamples = monoOutput.GetAudioBuffers()[0];
-
-            for (int i = 0; i < inSamples.Length; i++)
-            {
-                outSamples[i] = inSamples[i] * linearGain;
-            }
-
-            monoOutput.WriteData();
-        }
     }
 }

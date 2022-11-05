@@ -17,7 +17,7 @@ using namespace AudioPlugSharp;
 public class AudioPlugSharpEditor : public EditorView
 {
 public:
-	AudioPlugSharpEditor(AudioPlugSharpController* controller, IAudioPlugin^ plugin);
+	AudioPlugSharpEditor(EditController* controller, IAudioPluginEditor^ managed);
 	~AudioPlugSharpEditor(void);
 
 	tresult PLUGIN_API isPlatformTypeSupported(FIDString type) SMTG_OVERRIDE;
@@ -26,7 +26,6 @@ public:
 	void attachedToParent() SMTG_OVERRIDE;
 	void removedFromParent() SMTG_OVERRIDE;
 private:
-	AudioPlugSharpController* controller = nullptr;
-	gcroot<AudioPlugSharp::IAudioPlugin^> plugin;
+	gcroot<AudioPlugSharp::IAudioPluginEditor^> managedEditor;
 };
 

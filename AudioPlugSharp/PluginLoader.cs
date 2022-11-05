@@ -1,57 +1,53 @@
 ﻿using System;
 using System.IO;
 using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Runtime.Loader;
 
 namespace AudioPlugSharp
 {
-    public static class PluginLoader
+    public class PluginLoader
     {
-        public static IAudioPlugin LoadPluginFromAssembly(string assemblyName)
+        private PluginLoadContext _loadContext;
+        private readonly string _pluginAssemblyName;
+
+        private Assembly _pluginAssembly;
+
+        public PluginLoader(string path, string pluginAssemblyName)
         {
-            string assemblyPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-
-            PluginLoadContext loadContext = new PluginLoadContext(Path.Combine(assemblyPath, assemblyName) + ".dll");
-
-            Assembly pluginAssembly = LoadAssembly(assemblyName, loadContext);
-
-            return GetObjectByInterface(pluginAssembly, typeof(IAudioPlugin)) as IAudioPlugin;
+            _pluginAssemblyName = pluginAssemblyName;
+            _loadContext = new PluginLoadContext(Path.Combine(path, pluginAssemblyName) + ".dll");
         }
 
-        static Assembly LoadAssembly(String assemblyName, AssemblyLoadContext loadContext)
+        private Assembly LoadAssembly()
         {
             try
             {
-                Logger.Log("Load assembly: " + assemblyName);
+                Logger.Log("Load assembly: " + _pluginAssemblyName);
 
-                String executingAseemblyPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-
-                //Assembly^ assembly = AssemblyLoadContext::GetLoadContext(Reflection::Assembly::GetExecutingAssembly())->LoadFromAssemblyPath(
-                //	Path::Combine(executingAseemblyPath, (gcnew Reflection::AssemblyName(assemblyName))->Name + ".dll"));
-
-                AssemblyName actualAssemblyName = new AssemblyName(assemblyName);
+                AssemblyName actualAssemblyName = new AssemblyName(_pluginAssemblyName);
 
                 Logger.Log("Actual assembly name is " + actualAssemblyName);
 
-                Assembly assembly = loadContext.LoadFromAssemblyName(actualAssemblyName);
-
-                //Assembly^ assembly = loadContext->LoadFromAssemblyPath(
-                //	Path::Combine(executingAseemblyPath, (gcnew Reflection::AssemblyName(assemblyName))->Name + ".dll"));
+                Assembly assembly = _loadContext.LoadFromAssemblyName(actualAssemblyName);
 
                 return assembly;
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                Logger.Log("Unable to load assembly: " + assemblyName + " with: " + ex.ToString());
+                Logger.Log("Unable to load assembly: " + _pluginAssemblyName + " with: " + ex.ToString());
             }
 
             return null;
         }
 
-        static Object GetObjectByInterface(Assembly assembly, Type interfaceType)
+        public T GetObjectByInterface<T>()
         {
-            Logger.Log("Looking for type: " + interfaceType.AssemblyQualifiedName + " in assembly " + assembly.FullName);
+            if (_pluginAssembly is null)
+            {
+                _pluginAssembly = LoadAssembly();
+            }
+
+            var interfaceType = typeof(T);
+            Logger.Log("Looking for type: " + interfaceType.AssemblyQualifiedName + " in assembly " + _pluginAssembly.FullName);
 
             Logger.Log("FullyQualifiedName: " + typeof(IAudioPlugin).Module.FullyQualifiedName);
 
@@ -60,10 +56,10 @@ namespace AudioPlugSharp
 
             try
             {
-                Logger.Log("Assembly types: " + assembly.GetTypes().Length);
+                Logger.Log("Assembly types: " + _pluginAssembly.GetTypes().Length);
 
 
-                foreach (Type type in assembly.GetTypes())
+                foreach (Type type in _pluginAssembly.GetTypes())
                 {
                     if (type.IsPublic)
                     {
@@ -77,20 +73,6 @@ namespace AudioPlugSharp
 
                             break;
                         }
-
-                        //for each (System::Type^ iType in type->GetInterfaces())
-                        //{
-                        //	Logger::Log("Checking interface type: " + iType->Name + " -- " + iType->Module->FullyQualifiedName);
-
-                        //	if (iType == interfaceType)
-                        //	{
-                        //		Logger::Log("Matched");
-
-                        //		matchedType = type;
-
-                        //		break;
-                        //	}
-                        //}
                     }
 
                     if (matchedType != null)
@@ -106,67 +88,18 @@ namespace AudioPlugSharp
             {
                 Logger.Log("Unable to find type");
 
-                return null;
+                return default;
             }
-
-            Object obj = null;
 
             try
             {
-                obj = System.Activator.CreateInstance(matchedType);
+                return (T)Activator.CreateInstance(matchedType);
             }
             catch (Exception ex)
             {
                 Logger.Log("Failed to create object: " + ex.ToString());
+                throw;
             }
-
-            return obj;
-        }
-    }
-
-
-	public class PluginLoadContext : AssemblyLoadContext
-    {
-        AssemblyDependencyResolver resolver;
-
-        public PluginLoadContext(String pluginPath)
-        {
-            Logger.Log("Load context from: " + pluginPath);
-
-            resolver = new AssemblyDependencyResolver(pluginPath);
-        }
-
-        protected override Assembly Load(AssemblyName assemblyName)
-        {
-            if (assemblyName.Name == "AudioPlugSharp")
-            {
-                Logger.Log("Skipping AudioPlugSharp assembly load");
-
-                return AssemblyLoadContext.GetLoadContext(Assembly.GetExecutingAssembly()).LoadFromAssemblyName(assemblyName);
-            }
-
-            String assemblyPath = resolver.ResolveAssemblyToPath(assemblyName);
-
-            Logger.Log("PluginLoadContext load [" + assemblyName + "] from: " + assemblyPath);
-
-            if (assemblyPath != null)
-            {
-                return LoadFromAssemblyPath(assemblyPath);
-            }
-
-            return null;
-        }      
-
-        protected override IntPtr LoadUnmanagedDll(String unmanagedDllName)
-        {
-            String libraryPath = resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
-
-            if (libraryPath != null)
-            {
-                return LoadUnmanagedDllFromPath(libraryPath);
-            }
-
-            return IntPtr.Zero;
         }
     }
 }

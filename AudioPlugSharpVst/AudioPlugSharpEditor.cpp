@@ -5,16 +5,13 @@
 
 using namespace AudioPlugSharp;
 
-AudioPlugSharpEditor::AudioPlugSharpEditor(AudioPlugSharpController* controller, IAudioPlugin^ plugin)
-	: EditorView(controller, nullptr)
+AudioPlugSharpEditor::AudioPlugSharpEditor(EditController* controller, IAudioPluginEditor^ managed)
+	: EditorView(controller, nullptr), managedEditor(managed)
 {
-	this->controller = controller;
-	this->plugin = plugin;
+	double scale = managedEditor->GetDpiScale();
 
-	double scale = plugin->Editor->GetDpiScale();
-
-	rect.right = plugin->Editor->EditorWidth * scale;
-	rect.bottom = plugin->Editor->EditorHeight * scale;
+	rect.right = managedEditor->EditorWidth * scale;
+	rect.bottom = managedEditor->EditorHeight * scale;
 }
 
 AudioPlugSharpEditor::~AudioPlugSharpEditor(void)
@@ -42,9 +39,9 @@ tresult PLUGIN_API AudioPlugSharpEditor::onSize(ViewRect* newSize)
 	if (newSize)
 		rect = *newSize;
 
-	double scale = plugin->Editor->GetDpiScale();
+	double scale = managedEditor->GetDpiScale();
 
-	plugin->Editor->ResizeEditor(newSize->getWidth() / scale, newSize->getHeight() / scale);
+	managedEditor->ResizeEditor(newSize->getWidth() / scale, newSize->getHeight() / scale);
 
 	return kResultTrue;
 }
@@ -53,12 +50,12 @@ void AudioPlugSharpEditor::attachedToParent()
 {
 	Logger::Log("Show Editor");
 
-	plugin->Editor->ShowEditor((IntPtr)systemWindow);
+	managedEditor->ShowEditor((IntPtr)systemWindow);
 }
 
 void AudioPlugSharpEditor::removedFromParent()
 {
 	Logger::Log("Hide Editor");
 
-	plugin->Editor->HideEditor();
+	managedEditor->HideEditor();
 }

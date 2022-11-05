@@ -9,12 +9,9 @@ namespace AudioPlugSharp
         AudioIOPort[] InputPorts { get; }
         AudioIOPort[] OutputPorts { get; }
         EAudioBitsPerSample SampleFormatsSupported { get; }
-        IReadOnlyList<AudioPluginParameter> Parameters { get; }
 
         void Initialize();
-        void AddParameter(AudioPluginParameter parameter);
-        AudioPluginParameter GetParameter(string paramID);
-        AudioPluginParameter GetParameterByMidiController(uint ccNumber);
+        
         byte[] SaveState();
         void RestoreState(byte[] stateData);
 

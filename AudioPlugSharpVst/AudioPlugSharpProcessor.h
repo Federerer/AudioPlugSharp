@@ -23,7 +23,7 @@ class AudioPlugSharpController;
 class AudioPlugSharpProcessor : public AudioEffect
 {
 public:
-	AudioPlugSharpProcessor(void);
+	AudioPlugSharpProcessor(IAudioPluginProcessor^ managed);
 
 	static FUID AudioPlugSharpProcessorUID;
 
@@ -39,11 +39,14 @@ public:
 	tresult PLUGIN_API canProcessSampleSize(int32 symbolicSampleSize) SMTG_OVERRIDE;
 	tresult PLUGIN_API setBusArrangements(SpeakerArrangement* inputs, int32 numIns, SpeakerArrangement* outputs, int32 numOuts);
 	tresult PLUGIN_API notify(Vst::IMessage* message) SMTG_OVERRIDE;
+
+	tresult PLUGIN_API queryInterface(const char* iid, void** obj) SMTG_OVERRIDE;
+
 	~AudioPlugSharpProcessor(void);
 
-	gcroot<AudioPlugSharp::IAudioPlugin^> plugin;
-
 private:
+	gcroot<AudioPlugSharp::IAudioPluginProcessor^> managedProcessor;
+
 	AudioPlugSharpController* controller = nullptr;
 	gcroot<AudioPlugSharpHost^> audioPlugHost = nullptr;
 

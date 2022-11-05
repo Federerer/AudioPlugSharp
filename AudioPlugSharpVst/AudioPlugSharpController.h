@@ -15,7 +15,7 @@ class AudioPlugSharpProcessor;
 class AudioPlugSharpController : public EditController, public IMidiMapping
 {
 public:
-	AudioPlugSharpController(void);
+	AudioPlugSharpController(IAudioPluginController^ managed);
 
 	static FUID AudioPlugSharpControllerUID;
 
@@ -43,7 +43,6 @@ public:
 	 tresult PLUGIN_API connect(IConnectionPoint* other) SMTG_OVERRIDE;
 
 	 void sendIntMessage(const char* idTag, const Steinberg::int64 value);
-	 void setProcessor(AudioPlugSharpProcessor* processor, IAudioPlugin^ plugin);
 
 	~AudioPlugSharpController(void);
 
@@ -53,6 +52,6 @@ public:
 private:
 	AudioPlugSharpProcessor* processor = nullptr;
 	AudioPlugSharpEditor* editorView = nullptr;
-	gcroot<AudioPlugSharp::IAudioPlugin^> plugin;
+	gcroot<AudioPlugSharp::IAudioPluginController^> managedController;
 };
 
